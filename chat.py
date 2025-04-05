@@ -54,7 +54,7 @@ def query_rag(query_text: str) -> dict:
         # model = Ollama(model="gemma3:12b") # 古いOllamaモデル
         model = ChatOpenAI(
             openai_api_key=OPENAI_API_KEY,
-            model="gpt-4o-mini", # モデルをgpt-4oに変更
+            model="gpt-4o", # モデルをgpt-4oに変更
             temperature=0.7 # 必要に応じて温度を設定 (0は決定論的な出力)
         )
 
@@ -65,6 +65,11 @@ def query_rag(query_text: str) -> dict:
         sources = []
         if docs:
             sources = [{"title": doc.metadata.get('title', 'N/A'), "url": doc.metadata.get('source', 'N/A')} for doc in docs[:5]]
+            
+        # 🔥 printログ（Cloud Runログに出る）
+        print("🧑‍💬 User query:", query_text)
+        print("🤖 AI answer:", response.content)
+        print("📚 Sources:", sources)
 
         # 7. 結果の返却 (response.contentを使用)
         return {

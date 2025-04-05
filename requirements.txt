@@ -1,0 +1,11 @@
+Flask
+flask-bootstrap
+langchain
+langchain-openai
+langchain-community
+faiss-cpu
+python-dotenv
+openai
+gunicorn
+numpy
+marked
