@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: #f8f9fa;
+            margin-right: 20%;
+        }
+        .sources {
+            font-size: 0.8em;
+            margin-top: 10px;
+            color: #6c757d;
+        }
+        /* マークダウンスタイル */
+        .markdown-body {
+            color: inherit;
+        }
+        .markdown-body pre {
+            background-color: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .markdown-body code {
+            background-color: rgba(175,184,193,0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 6px;
+        }
+        .bot-message .markdown-body pre code {
+            background-color: transparent;
+        }
+        /* ローディングインジケーターのスタイル */
+        .loading {
+            display: none;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            margin-right: 20%;
+        }
+        .dots-animation {
+            display: inline-block;
+        }
+        .dots-animation::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+            100% { content: ''; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>RAG Chat</h1>
+        <div class="chat-container border rounded p-3 mb-3" id="chatContainer">
+            <!-- チャットメッセージがここに追加されます -->
+            <div id="loadingIndicator" class="loading">
+                <span>Thinking<span class="dots-animation"></span></span>
+            </div>
+        </div>
+        <div class="input-group">
+            <input type="text" class="form-control" id="userInput" placeholder="質問を入力してください...">
+            <button class="btn btn-primary" onclick="sendMessage()" id="sendButton">送信</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // MarkedJSの設定
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            // UIの更新
+            appendMessage('user', question);
+            input.value = '';
+            document.getElementById('sendButton').disabled = true;
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: question})
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    appendMessage('bot', data.answer, data.sources);
+                } else {
+                    appendMessage('bot', `エラー: ${data.error}`);
+                }
+            } catch (error) {
+                appendMessage('bot', `エラーが発生しました: ${error}`);
+            } finally {
+                document.getElementById('sendButton').disabled = false;
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        function appendMessage(type, text, sources = null) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            
+            // マークダウンの処理
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'markdown-body';
+            if (type === 'bot') {
+                contentDiv.innerHTML = marked.parse(text);
+            } else {
+                contentDiv.innerText = text;
+            }
+            messageDiv.appendChild(contentDiv);
+
+            if (sources) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'sources';
+                sourcesDiv.innerHTML = '<strong>参考文献:</strong><br>' + 
+                    sources.map(s => `<a href="${s.url}" target="_blank">${s.title}</a>`).join('<br>');
+                messageDiv.appendChild(sourcesDiv);
+            }
+
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enterキーでメッセージを送信
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
